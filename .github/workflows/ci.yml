@@ -1,0 +1,66 @@
+name: Triple Guard CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build with Maven
+      run: mvn clean compile
+      
+    - name: Run tests
+      run: mvn test
+      
+    - name: Package application
+      run: mvn package -DskipTests
+      
+    - name: Notify Feishu - Build Success
+      if: success()
+      run: |
+        curl -X POST "${{ secrets.FEISHU_WEBHOOK }}" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "msg_type": "interactive",
+          "card": {
+            "header": {
+              "title": {"tag": "plain_text", "content": "✅ 构建成功"},
+              "template": "green"
+            },
+            "elements": [
+              {"tag": "div", "text": {"tag": "lark_md", "content": "**项目**: triple-guard-spring\n**分支**: ${{ github.ref_name }}\n**提交**: ${{ github.sha }}\n**触发者**: ${{ github.actor }}"}}
+            ]
+          }
+        }'
+      
+    - name: Notify Feishu - Build Failed
+      if: failure()
+      run: |
+        curl -X POST "${{ secrets.FEISHU_WEBHOOK }}" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "msg_type": "interactive",
+          "card": {
+            "header": {
+              "title": {"tag": "plain_text", "content": "❌ 构建失败"},
+              "template": "red"
+            },
+            "elements": [
+              {"tag": "div", "text": {"tag": "lark_md", "content": "**项目**: triple-guard-spring\n**分支**: ${{ github.ref_name }}\n**提交**: ${{ github.sha }}\n**触发者**: ${{ github.actor }}\n\n请检查构建日志：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
+            ]
+          }
+        }'
