@@ -4,3 +4,16 @@ server:
 spring:
   application:
     name: triple-guard-spring
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/tripleguard
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.chenhao.tripleguard: DEBUG
