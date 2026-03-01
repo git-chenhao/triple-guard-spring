@@ -1,0 +1,18 @@
+{
+  "tasks": [
+    {
+      "id": "alert-agg-final",
+      "tmuxSession": "coder-alert-agg-final",
+      "worktree": "/Users/sunchen/chenhao_workspace/triple-guard-spring-alert-agg-final",
+      "branch": "feat/alert-agg-final",
+      "status": "coding",
+      "description": "完善告警聚合平台核心功能：1)基于指纹的告警去重机制 2)攒批聚合策略(group_wait/max_count/max_wait) 3)A2A协议调度器调用Sub-Agent进行根因分析 4)飞书通知集成(卡片格式) 5)可视化后台页面(告警列表/聚合批次/分析结果/规则配置)",
+      "createdAt": "2026-03-01T10:08:10Z",
+      "repo": "/Users/sunchen/chenhao_workspace/triple-guard-spring"
+    }
+  ],
+  "metadata": {
+    "description": "Active tasks tracking for Agent Swarm",
+    "version": "1.0"
+  }
+}

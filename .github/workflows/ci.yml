@@ -32,7 +32,7 @@ jobs:
     - name: Notify Feishu - Build Success
       if: success()
       run: |
-        curl -X POST "${{ secrets.FEISHU_WEBHOOK }}" \
+        curl -X POST "https://open.feishu.cn/open-apis/bot/v2/hook/df88bc8c-331e-4f8d-9990-c1f5cf4b55cd" \
         -H "Content-Type: application/json" \
         -d '{
           "msg_type": "interactive",
@@ -50,7 +50,7 @@ jobs:
     - name: Notify Feishu - Build Failed
       if: failure()
       run: |
-        curl -X POST "${{ secrets.FEISHU_WEBHOOK }}" \
+        curl -X POST "https://open.feishu.cn/open-apis/bot/v2/hook/df88bc8c-331e-4f8d-9990-c1f5cf4b55cd" \
         -H "Content-Type: application/json" \
         -d '{
           "msg_type": "interactive",

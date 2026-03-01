@@ -28,6 +28,37 @@ spring:
       enabled: true
       path: /h2-console
 
+# 告警平台配置
+alert:
+  # 聚合配置
+  aggregation:
+    enabled: true
+    time-window-seconds: 300  # 5分钟聚合窗口
+    max-batch-size: 100       # 单批次最大告警数
+    group-by-labels:
+      - alertname
+      - severity
+      - source
+
+  # 去重配置
+  deduplication:
+    enabled: true
+    time-window-seconds: 3600  # 1小时去重窗口
+
+  # 通知配置
+  notification:
+    enabled: true
+    delay-seconds: 30          # 批次创建后30秒发送通知
+    retry-count: 3
+    retry-interval-seconds: 60
+
+  # Agent分析配置
+  agent:
+    enabled: false             # 默认关闭，需要配置后启用
+    scheduler-url: http://localhost:8000/api/v1/schedule
+    timeout-seconds: 300
+    max-retries: 3
+
 # 日志配置
 logging:
   level:

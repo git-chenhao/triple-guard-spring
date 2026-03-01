@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triple Guard - 告警聚合平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+        .stat-card.critical .value { color: #ef4444; }
+        .stat-card.warning .value { color: #f59e0b; }
+        .stat-card.info .value { color: #3b82f6; }
+        .stat-card.success .value { color: #10b981; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: #374151;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 14px 20px;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge.critical { background: #fee2e2; color: #991b1b; }
+        .badge.warning { background: #fef3c7; color: #92400e; }
+        .badge.info { background: #dbeafe; color: #1e40af; }
+        .badge.pending { background: #fef3c7; color: #92400e; }
+        .badge.processing { background: #dbeafe; color: #1e40af; }
+        .badge.resolved { background: #d1fae5; color: #065f46; }
+        .badge.sent { background: #d1fae5; color: #065f46; }
+        .badge.failed { background: #fee2e2; color: #991b1b; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+        .filters {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .filters select, .filters input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Triple Guard - 告警聚合平台</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 统计卡片 -->
+        <div class="stats-grid" id="stats">
+            <div class="stat-card">
+                <h3>总告警数</h3>
+                <div class="value" id="totalAlerts">-</div>
+            </div>
+            <div class="stat-card critical">
+                <h3>活跃告警</h3>
+                <div class="value" id="firingAlerts">-</div>
+            </div>
+            <div class="stat-card warning">
+                <h3>待处理批次</h3>
+                <div class="value" id="pendingBatches">-</div>
+            </div>
+            <div class="stat-card success">
+                <h3>已解决批次</h3>
+                <div class="value" id="resolvedBatches">-</div>
+            </div>
+        </div>
+
+        <!-- 标签页 -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('batches')">告警批次</button>
+            <button class="tab" onclick="switchTab('alerts')">告警列表</button>
+        </div>
+
+        <!-- 告警批次 -->
+        <div id="batches-content" class="tab-content active">
+            <div class="filters">
+                <select id="batchStatusFilter" onchange="loadBatches()">
+                    <option value="">全部状态</option>
+                    <option value="pending">待处理</option>
+                    <option value="processing">处理中</option>
+                    <option value="resolved">已解决</option>
+                </select>
+                <select id="batchSeverityFilter" onchange="loadBatches()">
+                    <option value="">全部级别</option>
+                    <option value="critical">严重</option>
+                    <option value="warning">警告</option>
+                    <option value="info">信息</option>
+                </select>
+                <button class="btn btn-primary" onclick="flushAggregation()">触发聚合</button>
+            </div>
+            <div class="table-container">
+                <table id="batchesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名称</th>
+                            <th>状态</th>
+                            <th>严重级别</th>
+                            <th>告警数</th>
+                            <th>唯一告警</th>
+                            <th>创建时间</th>
+                            <th>通知状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchesBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="batchesPagination"></div>
+        </div>
+
+        <!-- 告警列表 -->
+        <div id="alerts-content" class="tab-content">
+            <div class="filters">
+                <select id="alertStatusFilter" onchange="loadAlerts()">
+                    <option value="">全部状态</option>
+                    <option value="firing">活跃</option>
+                    <option value="resolved">已解决</option>
+                </select>
+                <select id="alertSeverityFilter" onchange="loadAlerts()">
+                    <option value="">全部级别</option>
+                    <option value="critical">严重</option>
+                    <option value="warning">警告</option>
+                    <option value="info">信息</option>
+                </select>
+                <input type="text" id="alertSourceFilter" placeholder="告警来源" onchange="loadAlerts()">
+            </div>
+            <div class="table-container">
+                <table id="alertsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>告警名称</th>
+                            <th>状态</th>
+                            <th>严重级别</th>
+                            <th>来源</th>
+                            <th>接收时间</th>
+                            <th>批次ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertsBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="alertsPagination"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let currentPage = { batches: 0, alerts: 0 };
+        const pageSize = 20;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadBatches();
+        });
+
+        // 切换标签页
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tab + '-content').classList.add('active');
+
+            if (tab === 'batches') {
+                loadBatches();
+            } else if (tab === 'alerts') {
+                loadAlerts();
+            }
+        }
+
+        // 加载统计信息
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_BASE}/stats`);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('totalAlerts').textContent = data.data.totalAlerts;
+                    document.getElementById('firingAlerts').textContent = data.data.firingAlerts;
+                    document.getElementById('pendingBatches').textContent = data.data.pendingBatches;
+                    document.getElementById('resolvedBatches').textContent = data.data.resolvedBatches;
+                }
+            } catch (error) {
+                console.error('加载统计信息失败:', error);
+            }
+        }
+
+        // 加载批次列表
+        async function loadBatches(page = 0) {
+            const status = document.getElementById('batchStatusFilter').value;
+            const severity = document.getElementById('batchSeverityFilter').value;
+            const params = new URLSearchParams({
+                page: page,
+                size: pageSize,
+                ...(status && { status }),
+                ...(severity && { severity })
+            });
+
+            try {
+                document.getElementById('batchesBody').innerHTML = '<tr><td colspan="9" class="loading">加载中...</td></tr>';
+                const res = await fetch(`${API_BASE}/batches?${params}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderBatches(data.data.content);
+                    renderPagination('batches', data.data.totalPages, page);
+                    currentPage.batches = page;
+                }
+            } catch (error) {
+                console.error('加载批次失败:', error);
+                document.getElementById('batchesBody').innerHTML = '<tr><td colspan="9" class="empty-state">加载失败</td></tr>';
+            }
+        }
+
+        // 渲染批次列表
+        function renderBatches(batches) {
+            const tbody = document.getElementById('batchesBody');
+            if (batches.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无数据</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = batches.map(b => `
+                <tr>
+                    <td>${b.id}</td>
+                    <td>${escapeHtml(b.name)}</td>
+                    <td><span class="badge ${b.status}">${statusText(b.status)}</span></td>
+                    <td><span class="badge ${b.severity}">${b.severity?.toUpperCase() || '-'}</span></td>
+                    <td>${b.alertCount}</td>
+                    <td>${b.uniqueCount}</td>
+                    <td>${formatDateTime(b.createdAt)}</td>
+                    <td><span class="badge ${b.notificationStatus}">${notificationStatusText(b.notificationStatus)}</span></td>
+                    <td>
+                        <button class="btn btn-secondary action-btn" onclick="showBatchAlerts(${b.id})">查看告警</button>
+                        <button class="btn btn-secondary action-btn" onclick="resendNotification(${b.id})">重发通知</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 加载告警列表
+        async function loadAlerts(page = 0) {
+            const status = document.getElementById('alertStatusFilter').value;
+            const severity = document.getElementById('alertSeverityFilter').value;
+            const source = document.getElementById('alertSourceFilter').value;
+            const params = new URLSearchParams({
+                page: page,
+                size: pageSize,
+                ...(status && { status }),
+                ...(severity && { severity }),
+                ...(source && { source })
+            });
+
+            try {
+                document.getElementById('alertsBody').innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
+                const res = await fetch(`${API_BASE}/alerts?${params}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    renderAlerts(data.data.content);
+                    renderPagination('alerts', data.data.totalPages, page);
+                    currentPage.alerts = page;
+                }
+            } catch (error) {
+                console.error('加载告警失败:', error);
+                document.getElementById('alertsBody').innerHTML = '<tr><td colspan="7" class="empty-state">加载失败</td></tr>';
+            }
+        }
+
+        // 渲染告警列表
+        function renderAlerts(alerts) {
+            const tbody = document.getElementById('alertsBody');
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无数据</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = alerts.map(a => `
+                <tr>
+                    <td>${a.id}</td>
+                    <td>${escapeHtml(a.alertname)}</td>
+                    <td><span class="badge ${a.status}">${a.status?.toUpperCase() || '-'}</span></td>
+                    <td><span class="badge ${a.severity}">${a.severity?.toUpperCase() || '-'}</span></td>
+                    <td>${a.source || '-'}</td>
+                    <td>${formatDateTime(a.receivedAt)}</td>
+                    <td>${a.batchId || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 渲染分页
+        function renderPagination(type, totalPages, currentPageNum) {
+            const container = document.getElementById(type + 'Pagination');
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            if (currentPageNum > 0) {
+                html += `<button class="btn btn-secondary" onclick="load${type.charAt(0).toUpperCase() + type.slice(1)}(${currentPageNum - 1})">上一页</button>`;
+            }
+            html += `<span>第 ${currentPageNum + 1} / ${totalPages} 页</span>`;
+            if (currentPageNum < totalPages - 1) {
+                html += `<button class="btn btn-secondary" onclick="load${type.charAt(0).toUpperCase() + type.slice(1)}(${currentPageNum + 1})">下一页</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // 触发聚合
+        async function flushAggregation() {
+            try {
+                const res = await fetch(`${API_BASE}/aggregation/flush`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    alert('聚合触发成功');
+                    loadStats();
+                    loadBatches();
+                }
+            } catch (error) {
+                alert('聚合触发失败');
+            }
+        }
+
+        // 重新发送通知
+        async function resendNotification(batchId) {
+            if (!confirm('确定要重新发送通知吗？')) return;
+            try {
+                const res = await fetch(`${API_BASE}/batches/${batchId}/notify`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || (data.success ? '通知发送成功' : '通知发送失败'));
+                loadBatches();
+            } catch (error) {
+                alert('通知发送失败');
+            }
+        }
+
+        // 查看批次告警（简化处理）
+        function showBatchAlerts(batchId) {
+            alert('查看批次 ' + batchId + ' 的告警详情（功能开发中）');
+        }
+
+        // 工具函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        function statusText(status) {
+            const map = { pending: '待处理', processing: '处理中', resolved: '已解决', escalated: '已升级', closed: '已关闭' };
+            return map[status] || status;
+        }
+
+        function notificationStatusText(status) {
+            const map = { pending: '待发送', sent: '已发送', failed: '发送失败' };
+            return map[status] || status;
+        }
+
+        // 定时刷新
+        setInterval(() => {
+            loadStats();
+        }, 30000);
+    </script>
+</body>
+</html>
